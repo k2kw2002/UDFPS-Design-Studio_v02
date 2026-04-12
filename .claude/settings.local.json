@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(python -c \" import subprocess r = subprocess.run\\(['tasklist', '/FI', 'IMAGENAME eq python.exe'], capture_output=True, text=True, shell=True\\) print\\(r.stdout[-500:]\\) \")",
+      "Bash(nohup python:*)",
+      "Bash(echo \"Started PID: $!\")",
+      "Bash(python tests/test_physics_verification.py)",
+      "Bash(python -c \"import os; os.chdir\\('c:/Users/k2kw2/AI_PINN_PROJECT_v02'\\); exec\\(open\\('tests/test_physics_verification.py'\\).read\\(\\)\\)\")",
+      "Bash(PYTHONPATH=c:/Users/k2kw2/AI_PINN_PROJECT_v02 python -u tests/test_physics_verification.py)",
+      "Bash(python -u -c ':*)",
+      "Bash(python -c \" import subprocess r = subprocess.run\\(['tasklist'], capture_output=True, text=True, shell=True\\) for l in r.stdout.split\\('\\\\n'\\): if 'python' in l.lower\\(\\) and '26664' in l: subprocess.run\\(['taskkill','/F','/PID','26664'], shell=True, capture_output=True\\) \" python -u train_pinn_proper.py)",
+      "Bash(python -u train_pinn_proper.py)",
+      "Bash(python -u train_pinn_hybrid.py)",
+      "Bash(python -u run_hybrid_4angle.py)",
+      "Read(//c/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/**)",
+      "Read(//c/Users/k2kw2/**)",
+      "Read(//c/Users/k2kw2//**)",
+      "Bash(ls -lh /c/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/*.pt)",
+      "Bash(xargs wc:*)",
+      "Bash(cp c:/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/backend/physics/ar_coating/ar_boundary.py c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend/physics/ar_coating/ar_boundary.py)",
+      "Bash(cp c:/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/backend/physics/ar_coating/fit_ar_stack.py c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend/physics/ar_coating/fit_ar_stack.py)",
+      "Bash(cp c:/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/backend/physics/ar_coating/generate_lut.py c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend/physics/ar_coating/generate_lut.py)",
+      "Bash(cp c:/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/backend/physics/ar_coating/data/ar_lut.npz c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend/physics/ar_coating/data/ar_lut.npz)",
+      "Bash(cp c:/Users/k2kw2/AI_PINN_PROJECT_v02_Antigravity/backend/physics/ar_coating/data/fitted_stack.json c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend/physics/ar_coating/data/fitted_stack.json)",
+      "Bash(grep -n \"approxModel\" c:/Users/k2kw2/AI_PINN_PROJECT_v02/frontend/src/app.js c:/Users/k2kw2/AI_PINN_PROJECT_v02/frontend/src/components/*.js c:/Users/k2kw2/AI_PINN_PROJECT_v02/frontend/src/api/client.js)",
+      "Bash(PYTHONPATH=c:/Users/k2kw2/AI_PINN_PROJECT_v02 python -u train_parametric_pinn.py --epochs 500 --n_colloc 2000 --n_top 200 --n_bm 200 --n_angles 3 --device cpu)",
+      "Bash(PYTHONPATH=c:/Users/k2kw2/AI_PINN_PROJECT_v02 python -u train_parametric_pinn.py --epochs 500 --n_colloc 2000 --n_phase 200 --n_I 50 --n_bm 200 --n_angles 3 --device cpu)",
+      "Bash([ -f \"c:/Users/k2kw2/AI_PINN_PROJECT_v02/$f\" ])",
+      "Bash(ls c:/Users/k2kw2/AI_PINN_PROJECT_v02/*.py)",
+      "Bash(echo \"=== Root \\(깨끗\\) ===\" ls c:/Users/k2kw2/AI_PINN_PROJECT_v02/*.py c:/Users/k2kw2/AI_PINN_PROJECT_v02/*.md c:/Users/k2kw2/AI_PINN_PROJECT_v02/*.yml echo \"\" echo \"=== experiments/ \\(격리\\) ===\" ls c:/Users/k2kw2/AI_PINN_PROJECT_v02/experiments/ echo \"\" echo \"=== backend/ ===\" find c:/Users/k2kw2/AI_PINN_PROJECT_v02/backend -name \"*.py\")",
+      "Bash(where ngrok:*)",
+      "Bash(ls -lh *.pt)",
+      "Bash(ls -lh fingerprint_sample.png)",
+      "Bash(du -sh --exclude='.venv' --exclude='__pycache__' --exclude='experiments' --exclude='.git' .)",
+      "Bash(ls *.py *.md *.yml Dockerfile .gitignore)"
+    ]
+  }
+}

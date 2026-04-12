@@ -1,0 +1,29 @@
+{
+  "n_list": [
+    1.0,
+    1.46,
+    2.35,
+    1.46,
+    2.35,
+    1.52
+  ],
+  "d_list": [
+    null,
+    80,
+    30,
+    50,
+    20,
+    null
+  ],
+  "materials": [
+    "air",
+    "SiO2",
+    "TiO2",
+    "SiO2",
+    "TiO2",
+    "glass"
+  ],
+  "dphi_30_avg": -10.338831073797598,
+  "R_0deg": 0.3712810885221247,
+  "note": "unpolarized, 0-deg normalized"
+}

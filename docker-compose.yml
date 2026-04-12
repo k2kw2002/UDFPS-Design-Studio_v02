@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # 개발 시 소스 마운트 (핫리로드)
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      # PINN 체크포인트 (학습 결과 유지)
+      - ./pinn_checkpoint_no_lt.pt:/app/pinn_checkpoint_no_lt.pt
+      - ./pinn_results_all.pt:/app/pinn_results_all.pt
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # GPU 학습용 (docker compose --profile train up)
+  train:
+    build: .
+    profiles: ["train"]
+    volumes:
+      - ./backend:/app/backend
+      - .:/app/workdir
+    working_dir: /app/workdir
+    command: ["python", "train_pinn_batch.py"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

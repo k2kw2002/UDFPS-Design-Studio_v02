@@ -1,0 +1,30 @@
+# ============================================================
+# 필요한 라이브러리 목록
+# ============================================================
+# 설치 방법: pip install -r requirements.txt
+# ============================================================
+
+# --- 기본 과학 계산 ---
+numpy>=1.24            # 숫자 배열 계산 (행렬, 벡터 등)
+scipy>=1.10            # 과학 계산 (FFT, 최적화 등)
+
+# --- 딥러닝 (PINN, FNO 학습) ---
+torch>=2.0             # PyTorch: 딥러닝 프레임워크
+nvidia-physicsnemo     # NVIDIA PhysicsNeMo: 물리 정보 AI 프레임워크
+
+# --- 광학 계산 ---
+tmm                    # Transfer Matrix Method: AR 코팅 위상 계산
+
+# --- 최적화 ---
+botorch>=0.9           # Bayesian Optimization: 3목적 역설계
+gpytorch>=1.10         # Gaussian Process: 불확실도 추정
+pyDOE2                 # Latin Hypercube Sampling: 초기 샘플링
+
+# --- 웹 서버 (API) ---
+fastapi>=0.100         # 웹 API 프레임워크
+uvicorn>=0.23          # ASGI 서버 (FastAPI 실행기)
+pydantic>=2.0          # 데이터 검증 (스키마 정의)
+celery>=5.3            # 비동기 작업 큐 (백그라운드 학습)
+
+# --- 시각화 ---
+matplotlib>=3.7        # 그래프 그리기

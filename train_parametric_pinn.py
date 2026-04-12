@@ -111,8 +111,16 @@ def rand_range(n, lo, hi, dev):
     return torch.rand(n, device=dev) * (hi - lo) + lo
 
 
+def sample_theta(n):
+    """sin(θ) 균일 샘플링 (물리적으로 자연스러움)."""
+    sin_max = math.sin(math.radians(41.1))
+    sin_th = rand_range(n, -sin_max, sin_max, device)
+    cos_th = torch.sqrt(1 - sin_th ** 2)
+    return sin_th, cos_th
+
+
 def get_collocation(n):
-    """도메인 내부 랜덤 점 + 랜덤 설계변수."""
+    """도메인 내부 랜덤 점 + 랜덤 설계변수 + 랜덤 θ (8D)."""
     x = rand_range(n, 0, 504, device)
     z = rand_range(n, 0, 40, device)
     x.requires_grad_(True)
@@ -121,7 +129,8 @@ def get_collocation(n):
     d2 = rand_range(n, -10, 10, device)
     w1 = rand_range(n, 5, 20, device)
     w2 = rand_range(n, 5, 20, device)
-    return torch.stack([x, z, d1, d2, w1, w2], dim=1), x, z
+    sin_th, cos_th = sample_theta(n)
+    return torch.stack([x, z, d1, d2, w1, w2, sin_th, cos_th], dim=1), x, z
 
 
 def get_phase_bc(n):
@@ -139,22 +148,24 @@ def get_phase_bc(n):
     w1 = rand_range(n, 5, 20, device)
     w2 = rand_range(n, 5, 20, device)
 
-    coords = torch.stack([x_vals, z_vals, d1, d2, w1, w2], dim=1)
+    # θ 랜덤 샘플링 (sin 균일)
+    sin_th, cos_th = sample_theta(n)
+
+    coords = torch.stack([x_vals, z_vals, d1, d2, w1, w2, sin_th, cos_th], dim=1)
 
     target_re = torch.zeros(n, device=device)
     target_im = torch.zeros(n, device=device)
 
     for i in range(n):
         xi = x_vals[i].item()
-        # x 위치 → 유효 입사각
-        xc = xi - 252.0
-        theta_deg = max(-41, min(41, math.degrees(math.atan2(xc, 590.0))))
+        theta_rad = math.asin(sin_th[i].item())
+        theta_deg = math.degrees(theta_rad)
 
-        # AR LUT: 복소 투과계수 t(θ) = |t|·e^(j·dphi)
+        # AR LUT: 복소 투과계수
         t_amp, dphi_deg = ar_lut.get_complex_t(WL_UM * 1000, theta_deg, unpolarized=True)
 
         # 입사파: E_inc = exp(j·kx·x)
-        kx = K0 * N_CG * math.sin(math.radians(theta_deg))
+        kx = K0 * N_CG * sin_th[i].item()
         inc_phase = kx * xi
 
         # 타겟: t(θ) · E_inc
@@ -180,19 +191,19 @@ def get_intensity_bc(n, asm_fields, angles):
             asm_psf[i] += f['re'][xi]**2 + f['im'][xi]**2
     asm_psf /= len(angles)
 
-    # 랜덤 설계변수로 n개 샘플
+    # 랜덤 설계변수 + θ
     d1 = rand_range(n, -10, 10, device)
     d2 = rand_range(n, -10, 10, device)
     w1 = rand_range(n, 5, 20, device)
     w2 = rand_range(n, 5, 20, device)
+    sin_th, cos_th = sample_theta(n)
 
-    # OPD 위치 중 랜덤 선택
     opd_idx = np.random.randint(0, N_PITCHES, size=n)
     x_vals = torch.tensor([opd_idx[i] * OPD_PITCH + OPD_PITCH / 2 for i in range(n)],
                           dtype=torch.float32, device=device)
     z_vals = torch.full((n,), Z_OPD, device=device)
 
-    coords = torch.stack([x_vals, z_vals, d1, d2, w1, w2], dim=1)
+    coords = torch.stack([x_vals, z_vals, d1, d2, w1, w2, sin_th, cos_th], dim=1)
     targets = torch.tensor([asm_psf[opd_idx[i]] for i in range(n)],
                            dtype=torch.float32, device=device)
 
@@ -230,8 +241,10 @@ def get_bm_bc(n):
 
         if is_opaque.sum() > 0:
             valid = is_opaque.nonzero(as_tuple=True)[0]
+            sin_th, cos_th = sample_theta(len(valid))
             batch = torch.stack([x_curr[valid], z_curr[valid],
-                                 d1[valid], d2[valid], w1[valid], w2[valid]], dim=1)
+                                 d1[valid], d2[valid], w1[valid], w2[valid],
+                                 sin_th, cos_th], dim=1)
             points.append(batch)
             generated += len(valid)
 
@@ -283,17 +296,8 @@ def bm_bc_loss(model, bm_coords):
 # PSF 추론
 # ============================================================
 def predict_psf7(model, d1, d2, w1, w2):
-    """학습된 모델로 PSF 추론 (~1ms)."""
-    model.eval()
-    psf = np.zeros(N_PITCHES)
-    with torch.no_grad():
-        for i in range(N_PITCHES):
-            x_opd = i * OPD_PITCH + OPD_PITCH / 2
-            inp = torch.tensor([[x_opd, Z_OPD, d1, d2, w1, w2]],
-                               dtype=torch.float32, device=device)
-            out = model(inp)
-            psf[i] = (out[0, 0] ** 2 + out[0, 1] ** 2).item()
-    return psf
+    """학습된 모델로 PSF 추론 (다각도 합산)."""
+    return model.predict_psf7(d1, d2, w1, w2, device=str(device))
 
 
 # ============================================================
@@ -331,24 +335,64 @@ def main():
         model.train()
         optimizer.zero_grad()
 
-        # 가이드 원래 구조: L_H + L_phase + L_I + L_BC
-        # 1. L_Helmholtz (58%): 파동방정식
-        coords, x_col, z_col = get_collocation(args.n_colloc)
+        # Step 4: Curriculum Learning — 입사각 점진 확장
+        if epoch < args.epochs // 3:
+            theta_range = 10.0   # Stage 1: 저주파
+        elif epoch < 2 * args.epochs // 3:
+            theta_range = 25.0   # Stage 2: 중간
+        else:
+            theta_range = 41.1   # Stage 3: 풀 범위
+
+        # Step 3: 영역별 Collocation 재분배
+        n_total = args.n_colloc
+        n_bm_zone = n_total // 3      # BM 근처 (위상 급변)
+        n_top_zone = n_total // 4     # 상단 BC 근처
+        n_bulk = n_total - n_bm_zone - n_top_zone
+
+        # BM 근처 (z=15~25, z=35~40)
+        x_bm = rand_range(n_bm_zone, 0, 504, device)
+        z_bm_choices = torch.cat([
+            rand_range(n_bm_zone // 2, 15, 25, device),
+            rand_range(n_bm_zone - n_bm_zone // 2, 35, 40, device),
+        ])
+        x_bm.requires_grad_(True); z_bm_choices.requires_grad_(True)
+
+        # 상단 BC 근처 (z=35~40)
+        x_top = rand_range(n_top_zone, 0, 504, device)
+        z_top_zone = rand_range(n_top_zone, 35, 40, device)
+        x_top.requires_grad_(True); z_top_zone.requires_grad_(True)
+
+        # 나머지
+        x_bulk = rand_range(n_bulk, 0, 504, device)
+        z_bulk = rand_range(n_bulk, 0, 40, device)
+        x_bulk.requires_grad_(True); z_bulk.requires_grad_(True)
+
+        x_col = torch.cat([x_bm, x_top, x_bulk])
+        z_col = torch.cat([z_bm_choices, z_top_zone, z_bulk])
+
+        # 1. L_Helmholtz (8D)
+        n_col = len(x_col)
+        d1_col = rand_range(n_col, -10, 10, device)
+        d2_col = rand_range(n_col, -10, 10, device)
+        w1_col = rand_range(n_col, 5, 20, device)
+        w2_col = rand_range(n_col, 5, 20, device)
+        sin_col, cos_col = sample_theta(n_col)
+        coords = torch.stack([x_col, z_col, d1_col, d2_col, w1_col, w2_col, sin_col, cos_col], dim=1)
         Lh = helmholtz_loss(model, coords, x_col, z_col)
 
-        # 2. L_phase (23%): AR 코팅 위상 (LUT)
+        # 2. L_phase (Step 1: 가중치 x10)
         ph_coords, ph_re, ph_im = get_phase_bc(args.n_phase)
         Lp = phase_loss(model, ph_coords, ph_re, ph_im)
 
-        # 3. L_I (11%): OPD 세기 (ASM 타겟)
+        # 3. L_I
         li_coords, li_targets = get_intensity_bc(args.n_I, asm_fields, angles)
         Li = intensity_loss(model, li_coords, li_targets)
 
-        # 4. L_BC (8%): BM 불투명
+        # 4. L_BC
         bm_coords = get_bm_bc(args.n_bm)
         Lb = bm_bc_loss(model, bm_coords)
 
-        # L_total = 1.0·L_H + 0.5·L_phase + 0.3·L_I + 0.2·L_BC
+        # 가이드 원래 가중치 (θ 입력 추가로 0.619 문제 해결)
         loss = 1.0 * Lh + 0.5 * Lp + 0.3 * Li + 0.2 * Lb
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

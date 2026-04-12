@@ -6,3 +6,5 @@ node_modules/
 *.egg-info/
 experiments/
 pipeline_log.txt
+*.pt
+.claude/

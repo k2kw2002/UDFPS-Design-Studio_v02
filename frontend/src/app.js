@@ -113,6 +113,14 @@
           showGrid: true, showInfo: true,
           label: 'Best', labelColor: '#a5d6a7'
         });
+        // Best 파라미터 표시
+        var infoEl = document.getElementById('best-info');
+        if (infoEl) {
+          infoEl.innerHTML =
+            'd1=' + b.d1.toFixed(1) + ' d2=' + b.d2.toFixed(1) +
+            ' w1=' + b.w1.toFixed(1) + ' w2=' + b.w2.toFixed(1) +
+            '<br>MTF=' + (b.mtf * 100).toFixed(1) + '% Skew=' + b.skewness.toFixed(3);
+        }
       } else {
         bestContainer.style.display = 'none';
       }
@@ -347,11 +355,8 @@
       n_trials: parseInt(document.getElementById('n-trials').value) || 50,
     }).then(function (r) {
       state.inverse = r;
-      // Best 후보를 슬라이더에 로드 + Summary에서 바로 확인
-      var b = r.best;
-      state.d1 = b.d1; state.d2 = b.d2; state.w1 = b.w1; state.w2 = b.w2;
-      updateSliderDisplays();
-      triggerPredict();  // Summary 탭 갱신 (best 지문 포함)
+      // 슬라이더(기준 설계)는 건드리지 않음. Best는 3번째 지문에만 표시.
+      renderTab();
     }).catch(function (e) {
       console.error('Inverse error:', e);
       document.getElementById('explore-status').textContent = 'Error: ' + e.message;

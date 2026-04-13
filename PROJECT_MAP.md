@@ -3,12 +3,14 @@
 ## 한눈에 보는 파이프라인
 
 ```
-[지문 패턴] → [AR 코팅(TMM)] → [CG 전파(ASM)] → [BM 회절(PINN)] → [PSF 추출] → [역설계(BoTorch)]
-                                                         ↓
-                                                   [FNO 증류] → 실시간 추론
-                                                         ↓
-                                                   [Design Studio UI]
+[지문 패턴] → [AR 코팅(TMM)] → [CG 전파(ASM)] → [BM 회절(PINN)] → [FNO 증류] → [BoTorch 역설계] → [Top5 설계]
+                                                                        ↓
+                                                                  실시간 추론 (~0.1ms)
+                                                                        ↓
+                                                                  [Design Studio UI]
 ```
+
+**학습 파이프라인**: PINN 학습 → FNO 증류 (PINN→FNO teacher-student) → BoTorch 3목적 최적화 (FNO로 빠른 평가)
 
 ---
 

@@ -155,15 +155,7 @@
     renderFingerprint();
 
     var psfCanvas = document.getElementById('psf-canvas');
-    drawPsfBar(psfCanvas, state.psf_7);
-
-    if (state.amp_z40 && state.x_coords) {
-      drawAmplitudeProfile(
-        document.getElementById('profile-z40-canvas'),
-        state.amp_z40, state.x_coords,
-        { label: '|A| at z=40', d: state.d1, w: state.w1, vmax: 1.0 }
-      );
-    }
+    if (psfCanvas) drawPsfBar(psfCanvas, state.psf_7);
   }
 
   function renderDetail() {

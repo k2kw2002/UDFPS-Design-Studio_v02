@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UDFPS Design Studio</title>
-  <link rel="stylesheet" href="src/style.css?v=6" />
+  <link rel="stylesheet" href="src/style.css?v=7" />
 </head>
 <body>
   <header class="topbar">
@@ -13,59 +13,48 @@
       <h1>Design Studio</h1>
     </div>
     <div class="top-actions">
-      <span class="badge">Phase B &mdash; 9D PINN + Hard Mask</span>
+      <span class="badge">Phase B — 9D PINN + Hard Mask</span>
     </div>
   </header>
 
   <div class="layout">
-    <!-- Left: Controls -->
     <aside class="control-panel">
-      <h3>Design Variables</h3>
+      <h3>BM Design</h3>
       <div class="slider-row">
-        <label>d_BM1 (um)</label>
+        <label>δ₁ (μm)</label>
         <input type="range" id="slider-d1" min="-10" max="10" step="0.1" value="0">
         <span class="value" id="value-d1">0.0</span>
       </div>
       <div class="slider-row">
-        <label>d_BM2 (um)</label>
+        <label>δ₂ (μm)</label>
         <input type="range" id="slider-d2" min="-10" max="10" step="0.1" value="0">
         <span class="value" id="value-d2">0.0</span>
       </div>
       <div class="slider-row">
-        <label>w1 (um)</label>
+        <label>w₁ (μm)</label>
         <input type="range" id="slider-w1" min="5" max="20" step="0.1" value="10">
         <span class="value" id="value-w1">10.0</span>
       </div>
       <div class="slider-row">
-        <label>w2 (um)</label>
+        <label>w₂ (μm)</label>
         <input type="range" id="slider-w2" min="5" max="20" step="0.1" value="10">
         <span class="value" id="value-w2">10.0</span>
       </div>
-      <div class="slider-row">
-        <label>theta (deg)</label>
-        <input type="range" id="slider-theta_deg" min="-41" max="41" step="0.5" value="0">
-        <span class="value" id="value-theta_deg">0.0</span>
-      </div>
 
-      <div class="inverse-panel">
-        <h4>Inverse Design</h4>
-        <div class="slider-row compact">
-          <label>Target Skew</label>
-          <input type="number" id="target-skewness" value="0.0" step="0.01" min="0" max="1">
-        </div>
-        <div class="slider-row compact">
-          <label>Target MTF</label>
-          <input type="number" id="target-mtf" value="0.8" step="0.01" min="0" max="1">
-        </div>
-        <div class="slider-row compact">
-          <label>Trials</label>
-          <input type="number" id="n-trials" value="50" step="10" min="10" max="200">
-        </div>
-        <button class="run-button" id="inverse-run-btn">Find Optimal</button>
+      <div class="divider"></div>
+
+      <h3>Inverse Design</h3>
+      <div class="slider-row compact">
+        <label>Target MTF</label>
+        <input type="number" id="target-mtf" value="0.8" step="0.01" min="0" max="1">
       </div>
+      <div class="slider-row compact">
+        <label>Trials</label>
+        <input type="number" id="n-trials" value="50" step="10" min="10" max="200">
+      </div>
+      <button class="run-button" id="inverse-run-btn">Find Optimal</button>
     </aside>
 
-    <!-- Right: Tabs -->
     <main class="main-content">
       <nav class="tab-bar">
         <button class="tab-button active" data-tab="summary">Summary</button>
@@ -73,74 +62,69 @@
         <button class="tab-button" data-tab="explore">Explore</button>
       </nav>
 
-      <!-- Summary Tab -->
+      <!-- ===== Summary ===== -->
       <section class="tab-panel" data-tab="summary" style="display:block">
         <div id="metrics-container"></div>
 
-        <div class="canvas-container">
+        <div class="card">
           <h4>Fingerprint Simulation</h4>
           <div class="fp-row">
             <div class="fp-box">
               <div class="fp-label">Original</div>
-              <div id="fp-original" class="fp-image-box"></div>
+              <div id="fp-original" class="fp-frame"></div>
             </div>
             <div class="fp-box">
-              <div class="fp-label">Current Design</div>
-              <div id="fp-current" class="fp-image-box"></div>
+              <div class="fp-label" id="fp-current-label">Current Design</div>
+              <div id="fp-current" class="fp-frame"></div>
               <div id="fp-current-info" class="fp-info"></div>
             </div>
             <div class="fp-box" id="fp-best-box" style="display:none">
               <div class="fp-label">Best (Inverse)</div>
-              <div id="fp-best" class="fp-image-box"></div>
+              <div id="fp-best" class="fp-frame"></div>
               <div id="fp-best-info" class="fp-info"></div>
             </div>
           </div>
         </div>
 
-        <div class="canvas-container">
+        <div class="card">
           <h4>PSF (7-OPD)</h4>
-          <canvas id="psf-canvas" width="760" height="200"></canvas>
-        </div>
-        <div class="canvas-container">
-          <h4>z=40 Amplitude Profile (BM1)</h4>
-          <canvas id="profile-z40-canvas" width="760" height="180"></canvas>
+          <canvas id="psf-canvas" width="720" height="180"></canvas>
         </div>
       </section>
 
-      <!-- Detail Tab -->
+      <!-- ===== Detail ===== -->
       <section class="tab-panel" data-tab="detail" style="display:none">
-        <div class="canvas-container">
-          <h4>|A| Amplitude Map (x x z domain)</h4>
-          <canvas id="amp-map-canvas" width="760" height="200"></canvas>
+        <div class="card">
+          <h4>|A| Amplitude Map (x × z)</h4>
+          <canvas id="amp-map-canvas" width="720" height="180"></canvas>
         </div>
-        <div class="canvas-container">
-          <h4>z=40 |A| Profile (BM1 plane)</h4>
-          <canvas id="detail-z40-canvas" width="760" height="180"></canvas>
+        <div class="card">
+          <h4>z=40 |A| Profile (BM1)</h4>
+          <canvas id="detail-z40-canvas" width="720" height="160"></canvas>
         </div>
-        <div class="canvas-container">
-          <h4>z=0 Intensity |A|^2 (OPD plane)</h4>
-          <canvas id="detail-z0-canvas" width="760" height="180"></canvas>
+        <div class="card">
+          <h4>z=0 Intensity (OPD)</h4>
+          <canvas id="detail-z0-canvas" width="720" height="160"></canvas>
         </div>
       </section>
 
-      <!-- Explore Tab -->
+      <!-- ===== Explore ===== -->
       <section class="tab-panel" data-tab="explore" style="display:none">
         <div id="explore-status" class="explore-status">
-          Click "Find Optimal" to run inverse design search.
+          Click "Find Optimal" to search for the best design.
         </div>
-        <div class="canvas-container" id="pareto-container" style="display:none">
-          <h4>Pareto Frontier (Skewness vs MTF)</h4>
-          <canvas id="pareto-canvas" width="760" height="300"></canvas>
+        <div class="card" id="pareto-container" style="display:none">
+          <h4>Pareto Frontier</h4>
+          <canvas id="pareto-canvas" width="720" height="280"></canvas>
         </div>
         <div id="candidates-container" class="candidates-grid"></div>
       </section>
     </main>
   </div>
 
-  <script src="src/components/drawPsf.js?v=6"></script>
-  <script src="src/components/drawAmplitudeMap.js?v=6"></script>
-  <script src="src/components/drawAmplitudeProfile.js?v=6"></script>
-  <script src="src/components/drawMetricsCard.js?v=6"></script>
-  <script src="src/app.js?v=6"></script>
+  <script src="src/components/drawAmplitudeMap.js?v=7"></script>
+  <script src="src/components/drawAmplitudeProfile.js?v=7"></script>
+  <script src="src/components/drawMetricsCard.js?v=7"></script>
+  <script src="src/app.js?v=7"></script>
 </body>
 </html>

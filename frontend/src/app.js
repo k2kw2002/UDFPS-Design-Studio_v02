@@ -347,7 +347,11 @@
       n_trials: parseInt(document.getElementById('n-trials').value) || 50,
     }).then(function (r) {
       state.inverse = r;
-      switchTab('explore');
+      // Best 후보를 슬라이더에 로드 + Summary에서 바로 확인
+      var b = r.best;
+      state.d1 = b.d1; state.d2 = b.d2; state.w1 = b.w1; state.w2 = b.w2;
+      updateSliderDisplays();
+      triggerPredict();  // Summary 탭 갱신 (best 지문 포함)
     }).catch(function (e) {
       console.error('Inverse error:', e);
       document.getElementById('explore-status').textContent = 'Error: ' + e.message;

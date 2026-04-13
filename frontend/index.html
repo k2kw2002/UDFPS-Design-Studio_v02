@@ -3,194 +3,123 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BM Design Studio</title>
-  <link rel="stylesheet" href="src/style.css?v=studio-3" />
+  <title>UDFPS Design Studio</title>
+  <link rel="stylesheet" href="src/style.css?v=4" />
 </head>
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">UDFPS BM</p>
+      <p class="eyebrow">UDFPS COE</p>
       <h1>Design Studio</h1>
     </div>
     <div class="top-actions">
-      <div class="model-status" title="Current computation path">
-        <span>Model</span>
-        <strong id="model-status-label">Fast estimate</strong>
-      </div>
-      <div class="mode-switch" role="tablist" aria-label="Design mode">
-        <button class="mode-btn active" data-mode="reverse" type="button">Reverse</button>
-        <button class="mode-btn" data-mode="forward" type="button">Forward</button>
-      </div>
+      <span class="badge">Phase B &mdash; 9D PINN + Hard Mask</span>
     </div>
   </header>
 
-  <main class="studio-shell">
-    <section class="workbench">
-      <div class="stage-head">
-        <div>
-          <p class="eyebrow" id="stage-kicker">목표 성능에서 BM 후보 찾기</p>
-          <h2 id="stage-title">역설계</h2>
-          <p class="stage-copy" id="stage-copy">목표 성능과 공정 제약을 기준으로 BM 후보를 비교합니다. 수치는 um 단위입니다.</p>
+  <div class="layout">
+    <!-- Left: Controls -->
+    <aside class="control-panel">
+      <h3>Design Variables</h3>
+      <div class="slider-row">
+        <label>d_BM1 (um)</label>
+        <input type="range" id="slider-d1" min="-10" max="10" step="0.1" value="0">
+        <span class="value" id="value-d1">0.0</span>
+      </div>
+      <div class="slider-row">
+        <label>d_BM2 (um)</label>
+        <input type="range" id="slider-d2" min="-10" max="10" step="0.1" value="0">
+        <span class="value" id="value-d2">0.0</span>
+      </div>
+      <div class="slider-row">
+        <label>w1 (um)</label>
+        <input type="range" id="slider-w1" min="5" max="20" step="0.1" value="10">
+        <span class="value" id="value-w1">10.0</span>
+      </div>
+      <div class="slider-row">
+        <label>w2 (um)</label>
+        <input type="range" id="slider-w2" min="5" max="20" step="0.1" value="10">
+        <span class="value" id="value-w2">10.0</span>
+      </div>
+      <div class="slider-row">
+        <label>theta (deg)</label>
+        <input type="range" id="slider-theta_deg" min="-41" max="41" step="0.5" value="0">
+        <span class="value" id="value-theta_deg">0.0</span>
+      </div>
+
+      <div class="inverse-panel">
+        <h4>Inverse Design</h4>
+        <div class="slider-row compact">
+          <label>Target Skew</label>
+          <input type="number" id="target-skewness" value="0.0" step="0.01" min="0" max="1">
         </div>
-        <div class="stage-actions">
-          <button id="btn-export-report" class="secondary-action" type="button">Report</button>
-          <button id="btn-run" class="primary-action" type="button">후보 생성</button>
+        <div class="slider-row compact">
+          <label>Target MTF</label>
+          <input type="number" id="target-mtf" value="0.8" step="0.01" min="0" max="1">
         </div>
-      </div>
-
-      <div class="target-grid" id="reverse-controls">
-        <label>
-          <span>MTF 최소</span>
-          <input id="spec-mtf" type="range" min="30" max="90" value="60" />
-          <strong id="spec-mtf-val">60%</strong>
-        </label>
-        <label>
-          <span>Skewness 최대</span>
-          <input id="spec-skew" type="range" min="3" max="30" value="10" />
-          <strong id="spec-skew-val">0.10</strong>
-        </label>
-        <label>
-          <span>Throughput 최소</span>
-          <input id="spec-t" type="range" min="20" max="90" value="60" />
-          <strong id="spec-t-val">60%</strong>
-        </label>
-      </div>
-
-      <div class="target-grid hidden" id="forward-controls">
-        <label>
-          <span>delta BM1</span>
-          <input id="param-d1" type="range" min="-100" max="100" value="0" />
-          <strong id="param-d1-val">0.0 um</strong>
-        </label>
-        <label>
-          <span>delta BM2</span>
-          <input id="param-d2" type="range" min="-100" max="100" value="0" />
-          <strong id="param-d2-val">0.0 um</strong>
-        </label>
-        <label>
-          <span>w1</span>
-          <input id="param-w1" type="range" min="50" max="200" value="100" />
-          <strong id="param-w1-val">10.0 um</strong>
-        </label>
-        <label>
-          <span>w2</span>
-          <input id="param-w2" type="range" min="50" max="200" value="100" />
-          <strong id="param-w2-val">10.0 um</strong>
-        </label>
-      </div>
-
-      <div class="visual-grid">
-        <section class="fingerprint-lane" aria-label="Fingerprint comparison">
-          <div class="fingerprint-tile">
-            <canvas id="fp-original" width="180" height="220"></canvas>
-            <span>원본 지문</span>
-          </div>
-          <div class="fingerprint-tile">
-            <canvas id="fp-current" width="180" height="220"></canvas>
-            <span id="current-fp-label">현재 설계</span>
-          </div>
-          <div class="fingerprint-tile accent">
-            <canvas id="fp-best" width="180" height="220"></canvas>
-            <span id="best-fp-label">추천 후보</span>
-          </div>
-        </section>
-
-        <section class="metrics-board" aria-label="Selected design metrics">
-          <div class="metric">
-            <span>MTF</span>
-            <strong id="metric-mtf">-</strong>
-          </div>
-          <div class="metric">
-            <span>Skew</span>
-            <strong id="metric-skew">-</strong>
-          </div>
-          <div class="metric">
-            <span>Throughput</span>
-            <strong id="metric-t">-</strong>
-          </div>
-          <div class="metric">
-            <span>Crosstalk</span>
-            <strong id="metric-xt">-</strong>
-          </div>
-        </section>
-      </div>
-
-      <section class="decision-summary" aria-label="Selected design summary">
-        <div>
-          <p class="eyebrow">Decision Summary</p>
-          <h2 id="summary-title">추천 후보를 검토하세요</h2>
+        <div class="slider-row compact">
+          <label>Trials</label>
+          <input type="number" id="n-trials" value="50" step="10" min="10" max="200">
         </div>
-        <p id="summary-copy">목표를 조정하면 후보와 검증 준비 상태가 함께 갱신됩니다.</p>
-        <div class="summary-chips" id="summary-chips"></div>
-      </section>
-
-      <div class="analysis-grid">
-        <section class="plot-panel">
-          <div class="panel-title">
-            <span>PSF 7 OPD</span>
-            <small id="psf-source">Fast estimate</small>
-          </div>
-          <canvas id="psf-chart" width="520" height="190"></canvas>
-        </section>
-        <section class="stack-panel">
-          <div class="panel-title">
-            <span>COE Stack</span>
-            <small id="constraint-label">Constraint OK</small>
-          </div>
-          <canvas id="coe-chart" width="240" height="220"></canvas>
-        </section>
+        <button class="run-button" id="inverse-run-btn">Find Optimal</button>
       </div>
-
-      <div class="decision-grid">
-        <section class="plot-panel">
-          <div class="panel-title">
-            <span>Trade-off Map</span>
-            <small>MTF vs throughput</small>
-          </div>
-          <canvas id="tradeoff-chart" width="520" height="180"></canvas>
-        </section>
-        <section class="insight-panel">
-          <div class="panel-title">
-            <span>Sensitivity</span>
-            <small>local response</small>
-          </div>
-          <div id="sensitivity-list" class="sensitivity-list"></div>
-        </section>
-      </div>
-    </section>
-
-    <aside class="candidate-rail" aria-label="Candidate list">
-      <div class="rail-head">
-        <div>
-          <p class="eyebrow">Pareto Candidates</p>
-          <h2>후보 비교</h2>
-        </div>
-        <span id="candidate-count">0</span>
-      </div>
-      <div id="candidate-list" class="candidate-list"></div>
-      <section class="verify-panel" aria-label="Verification path">
-        <p class="eyebrow">Verification</p>
-        <div class="verify-step done"><strong>Fast estimate</strong><span>interactive preview</span></div>
-        <div class="verify-step" id="verify-asm"><strong>ASM wave optics</strong><span>recommended before export</span></div>
-        <div class="verify-step"><strong>PINN/FNO cross-check</strong><span>surrogate consistency</span></div>
-        <div class="verify-step"><strong>LightTools export</strong><span>handoff package</span></div>
-      </section>
-      <section class="guardrail-panel" aria-label="Design guardrails">
-        <p class="eyebrow">Guardrails</p>
-        <div class="guardrail-row"><span>Units</span><strong>um</strong></div>
-        <div class="guardrail-row"><span>d fixed</span><strong>20.0</strong></div>
-        <div class="guardrail-row"><span>w range</span><strong>5 to 20</strong></div>
-        <div class="guardrail-row"><span>delta rule</span><strong>|d| <= w/2</strong></div>
-      </section>
-      <p id="status-line" class="status-line">목표를 조정한 뒤 후보를 생성하세요.</p>
     </aside>
-  </main>
 
-  <script src="src/store/designStore.js?v=studio-3"></script>
-  <script src="src/api/client.js?v=studio-3"></script>
-  <script src="src/components/drawStack.js?v=studio-3"></script>
-  <script src="src/components/drawPsf.js?v=studio-3"></script>
-  <script src="src/components/FingerprintView.js?v=studio-3"></script>
-  <script src="src/app.js?v=studio-3"></script>
+    <!-- Right: Tabs -->
+    <main class="main-content">
+      <nav class="tab-bar">
+        <button class="tab-button active" data-tab="summary">Summary</button>
+        <button class="tab-button" data-tab="detail">Detail</button>
+        <button class="tab-button" data-tab="explore">Explore</button>
+      </nav>
+
+      <!-- Summary Tab -->
+      <section class="tab-panel" data-tab="summary" style="display:block">
+        <div id="metrics-container"></div>
+        <div class="canvas-container">
+          <h4>PSF (7-OPD)</h4>
+          <canvas id="psf-canvas" width="760" height="200"></canvas>
+        </div>
+        <div class="canvas-container">
+          <h4>z=40 Amplitude Profile (BM1)</h4>
+          <canvas id="profile-z40-canvas" width="760" height="180"></canvas>
+        </div>
+      </section>
+
+      <!-- Detail Tab -->
+      <section class="tab-panel" data-tab="detail" style="display:none">
+        <div class="canvas-container">
+          <h4>|A| Amplitude Map (x x z domain)</h4>
+          <canvas id="amp-map-canvas" width="760" height="200"></canvas>
+        </div>
+        <div class="canvas-container">
+          <h4>z=40 |A| Profile (BM1 plane)</h4>
+          <canvas id="detail-z40-canvas" width="760" height="180"></canvas>
+        </div>
+        <div class="canvas-container">
+          <h4>z=0 Intensity |A|^2 (OPD plane)</h4>
+          <canvas id="detail-z0-canvas" width="760" height="180"></canvas>
+        </div>
+      </section>
+
+      <!-- Explore Tab -->
+      <section class="tab-panel" data-tab="explore" style="display:none">
+        <div id="explore-status" class="explore-status">
+          Click "Find Optimal" to run inverse design search.
+        </div>
+        <div class="canvas-container" id="pareto-container" style="display:none">
+          <h4>Pareto Frontier (Skewness vs MTF)</h4>
+          <canvas id="pareto-canvas" width="760" height="300"></canvas>
+        </div>
+        <div id="candidates-container" class="candidates-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="src/components/drawPsf.js?v=4"></script>
+  <script src="src/components/drawAmplitudeMap.js?v=4"></script>
+  <script src="src/components/drawAmplitudeProfile.js?v=4"></script>
+  <script src="src/components/drawMetricsCard.js?v=4"></script>
+  <script src="src/app.js?v=4"></script>
 </body>
 </html>

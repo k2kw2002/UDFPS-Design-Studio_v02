@@ -251,8 +251,7 @@ def fingerprint_simulation(req: DesignPredictRequest):
     정사각 격자(72um), 사각형 aperture 가정.
     """
     from PIL import Image
-    from scipy.signal import convolve2d
-    from scipy.interpolate import interp1d
+    from scipy.ndimage import gaussian_filter
     from io import BytesIO
     import base64
 
@@ -275,32 +274,30 @@ def fingerprint_simulation(req: DesignPredictRequest):
     # 센서 관점: ridge(잉크=검정=0) → 밝음(1), valley(흰색=255) → 어두움(0)
     img_sensor = 1.0 - img_norm
 
-    # 2. 1D PSF (hybrid 방식 — 설계변수에 반응)
+    # 2. PSF + MTF 계산
     psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=3)
     psf_1d = np.array(psf_1d)
+    mtf = float(compute_psf_mtf(psf_1d.tolist()))
+    skew = float(compute_psf_skewness(psf_1d.tolist()))
 
-    # 3. PSF를 smooth kernel로 확장 (7 -> 21 tap)
-    x_sparse = np.arange(7).astype(float)
-    x_dense = np.linspace(0, 6, 21)
-    try:
-        kernel = interp1d(x_sparse, psf_1d, kind='cubic')(x_dense)
-    except Exception:
-        kernel = interp1d(x_sparse, psf_1d, kind='linear')(x_dense)
-    kernel = np.maximum(kernel, 0)
-    if kernel.sum() < 1e-6:
-        kernel = np.ones_like(kernel)
-    kernel /= kernel.sum()
+    # 3. MTF → contrast 감소 + blur (시각 효과)
+    #    MTF=1.0 → contrast=1.0 (선명), MTF=0.0 → contrast=0.2 (거의 안 보임)
+    contrast = 0.2 + 0.8 * max(0, min(1, mtf))
+    output = 0.5 + (img_sensor - 0.5) * contrast
 
-    # 4. 2D separable convolution (센서 입력 기준)
-    temp = convolve2d(img_sensor, kernel.reshape(1, -1),
-                      mode='same', boundary='symm')
-    output = convolve2d(temp, kernel.reshape(-1, 1),
-                        mode='same', boundary='symm')
+    #    MTF 낮으면 blur 강하게 (CG 550um 퍼짐 표현)
+    blur_sigma = max(0.5, 4.0 * (1.0 - mtf))
+    output = gaussian_filter(output, sigma=blur_sigma)
 
-    output_vis = (output - output.min()) / (output.max() - output.min() + 1e-8)
-    output_vis = (output_vis * 255).astype(np.uint8)
+    #    Skewness → 좌우 비대칭 shift
+    if abs(skew) > 0.02:
+        shift_px = int(skew * 8)
+        output = np.roll(output, shift_px, axis=1)
 
-    # 5. base64 인코딩
+    output = np.clip(output, 0, 1)
+    output_vis = (output * 255).astype(np.uint8)
+
+    # 4. base64 인코딩
     def to_b64(arr):
         buf = BytesIO()
         Image.fromarray(arr).save(buf, format='PNG')
@@ -310,6 +307,7 @@ def fingerprint_simulation(req: DesignPredictRequest):
         "original_image": to_b64(img),
         "processed_image": to_b64(output_vis),
         "psf_1d": psf_1d.tolist(),
-        "mtf": float(compute_psf_mtf(psf_1d.tolist())),
-        "approximation": "2D Separable (72um pitch, square aperture)",
+        "mtf": mtf,
+        "skewness": skew,
+        "approximation": "MTF contrast + Gaussian blur + skewness shift",
     }

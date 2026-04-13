@@ -195,18 +195,20 @@ class OpticalPipeline:
             # 2) CG 전파 (크로스토크 발생)
             U = self.asm.propagate_1d(U, self.dx, cg_thick)
 
-            # 3) BM1
+            # 3) BM1 — PINN: 신경망 forward pass, ASM: binary mask
             if self.use_pinn and self.pinn_model is not None:
-                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2, z=40.0)
+                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2,
+                                           z=40.0, theta_deg=theta)
             else:
                 U = U * bm1_mask
 
             # 4) ILD
             U = self.asm.propagate_1d(U, self.dx, self.ild_thick)
 
-            # 5) BM2
+            # 5) BM2 — PINN: 신경망 forward pass, ASM: binary mask
             if self.use_pinn and self.pinn_model is not None:
-                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2, z=20.0)
+                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2,
+                                           z=20.0, theta_deg=theta)
             else:
                 U = U * bm2_mask
 
@@ -288,24 +290,43 @@ class OpticalPipeline:
         metrics = self.psf_metrics.compute(psf7)
         return {"psf7": psf7, "metrics": metrics}
 
-    def _pinn_bm_mask(self, d1, w1, d2, w2, z):
+    def _pinn_bm_mask(self, d1, w1, d2, w2, z, theta_deg=0.0):
         """
-        PINN soft BM mask at given z plane.
-        sigmoid(slit_dist) → smooth transition at slit edges.
+        True PINN BM mask: 신경망 forward pass로 |A| 계산.
+
+        model.forward_envelope() 호출 → SIREN+Fourier 가중치 사용.
+        Phase B 학습된 BM 구조(slit/opaque 분화) 반영.
         """
         import torch
-        from backend.core.parametric_pinn import compute_slit_dist, compute_bm_mask
+        import math
+        from backend.core.parametric_pinn import compute_slit_dist
 
+        th_rad = math.radians(theta_deg)
         x_t = torch.tensor(self.x_grid, dtype=torch.float32)
         z_t = torch.full((self.N,), float(z))
         d1_t = torch.full((self.N,), float(d1))
         d2_t = torch.full((self.N,), float(d2))
         w1_t = torch.full((self.N,), float(w1))
         w2_t = torch.full((self.N,), float(w2))
-
+        sin_t = torch.full((self.N,), math.sin(th_rad))
+        cos_t = torch.full((self.N,), math.cos(th_rad))
         sd = compute_slit_dist(x_t, z_t, d1_t, d2_t, w1_t, w2_t)
-        mask = compute_bm_mask(sd, self.pinn_model.mask_sharpness)
-        return mask.numpy()
+
+        coords = torch.stack([x_t, z_t, d1_t, d2_t, w1_t, w2_t,
+                               sin_t, cos_t, sd], dim=1)
+
+        with torch.no_grad():
+            A = self.pinn_model.forward_envelope(coords)
+            amp = torch.sqrt(A[:, 0] ** 2 + A[:, 1] ** 2)
+
+        # |A|를 0~1 transmission mask로 정규화
+        amax = amp.max().item()
+        if amax > 1e-6:
+            mask = (amp / amax).numpy()
+        else:
+            mask = amp.numpy()
+
+        return mask
 
     def compare_cg_thickness(
         self, thicknesses: list[float], **bm_kwargs

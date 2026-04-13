@@ -171,10 +171,15 @@ def compute_psf_skewness(psf_7):
 
 
 def compute_psf_mtf(psf_7):
-    """간이 MTF: Peak / (Peak + Secondary)."""
+    """
+    MTF@ridge: (ridge평균 - valley평균) / (ridge평균 + valley평균).
+    지문 패턴 period=288um (4피치), 7-OPD 배치:
+      indices 0,1,4,5 = ridge, indices 2,3,6 = valley.
+    """
     psf = np.array(psf_7)
-    sorted_psf = np.sort(psf)[::-1]
-    return float(sorted_psf[0] / (sorted_psf[0] + sorted_psf[1] + 1e-8))
+    ridge = psf[[0, 1, 4, 5]].mean()
+    valley = psf[[2, 3, 6]].mean()
+    return float((ridge - valley) / (ridge + valley + 1e-8))
 
 
 def compute_throughput(psf_7):

@@ -441,9 +441,9 @@
     btn.textContent = 'Searching...';
 
     fetchInverse({
-      target_skewness: 0.0,
+      target_skewness: parseFloat((document.getElementById('target-skewness') || {}).value || 0),
       target_mtf: parseFloat((document.getElementById('target-mtf') || {}).value || 0.8),
-      target_throughput: 0.5,
+      target_throughput: parseFloat((document.getElementById('target-throughput') || {}).value || 0.5),
       n_trials: parseInt((document.getElementById('n-trials') || {}).value || 50),
     }).then(function (r) {
       state.inverse = r;

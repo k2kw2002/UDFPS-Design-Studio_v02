@@ -97,7 +97,7 @@
   function renderBestFingerprint() {
     if (!state.inverse || !state.inverse.best) return;
     var b = state.inverse.best;
-    // Fetch fingerprint for best candidate
+    // Fetch fingerprint image, but use inverse_search MTF (not fingerprint_sim MTF)
     apiPost('/api/inverse/fingerprint_sim', {
       d1: b.d1, d2: b.d2, w1: b.w1, w2: b.w2, theta_deg: 0
     }).then(function (r) {
@@ -106,7 +106,8 @@
       if (bestEl) bestEl.innerHTML = '<img src="data:image/png;base64,' + r.processed_image + '"/>';
       var bestInfo = document.getElementById('fp-best-info');
       if (bestInfo) {
-        bestInfo.textContent = 'MTF ' + (r.mtf * 100).toFixed(1) + '% | ' +
+        // MTF from inverse_search result (same source as #1 card)
+        bestInfo.textContent = 'MTF ' + (b.mtf * 100).toFixed(1) + '% | ' +
           'd1=' + b.d1.toFixed(1) + ' w1=' + b.w1.toFixed(1);
       }
       document.getElementById('fp-best-box').style.display = '';

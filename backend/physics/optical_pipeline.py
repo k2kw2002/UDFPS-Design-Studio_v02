@@ -27,10 +27,14 @@ class OpticalPipeline:
     구조 (위에서 아래로):
       z=570um  지문 면 (입사파 소스)
       z=570~20um  Cover Glass 550um (ASM 전파)
-      z=20um   BM1 (아퍼처 마스킹)
-      z=20~0um ILD 20um (ASM 전파)
-      z=0.1um  BM2 (아퍼처 마스킹)  [간소화: BM1 바로 아래]
+      z=40um   BM1 (아퍼처 마스킹) — PINN soft mask 또는 binary
+      z=40~20um ILD 20um (ASM 전파)
+      z=20um   BM2 (아퍼처 마스킹) — PINN soft mask 또는 binary
+      z=20~0um Encap 20um (ASM 전파)
       z=0um    OPD (세기 측정)
+
+    use_pinn=True: BM 마스크를 PINN soft sigmoid로 교체
+                   (회절 edge 효과 반영, Phase B 학습 결과)
     """
 
     def __init__(
@@ -43,9 +47,11 @@ class OpticalPipeline:
         opd_pitch: float = 72.0,
         opd_width: float = 10.0,
         n_pitches: int = 7,
-        dx: float = 0.5,           # 격자 간격 (um) — 정밀도와 속도 트레이드오프
-        n_angles: int = 21,        # 입사각 샘플 수
-        theta_max: float = 41.0,   # 최대 입사각
+        dx: float = 0.5,
+        n_angles: int = 21,
+        theta_max: float = 41.0,
+        use_pinn: bool = False,
+        pinn_model=None,
     ):
         self.wl = wl_um
         self.n_cg = n_cg
@@ -74,6 +80,10 @@ class OpticalPipeline:
 
         # 입사각 배열 (±theta_max, 양방향)
         self.thetas = np.linspace(-theta_max, theta_max, n_angles)
+
+        # PINN hybrid (Phase B soft BM mask)
+        self.use_pinn = use_pinn
+        self.pinn_model = pinn_model
 
     def _compute_system_psf(self, bm1_mask, bm2_mask, use_ar, cg_thick):
         """
@@ -186,13 +196,19 @@ class OpticalPipeline:
             U = self.asm.propagate_1d(U, self.dx, cg_thick)
 
             # 3) BM1
-            U = U * bm1_mask
+            if self.use_pinn and self.pinn_model is not None:
+                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2, z=40.0)
+            else:
+                U = U * bm1_mask
 
             # 4) ILD
             U = self.asm.propagate_1d(U, self.dx, self.ild_thick)
 
             # 5) BM2
-            U = U * bm2_mask
+            if self.use_pinn and self.pinn_model is not None:
+                U = U * self._pinn_bm_mask(delta_bm1, w1, delta_bm2, w2, z=20.0)
+            else:
+                U = U * bm2_mask
 
             # 6) Encap
             U = self.asm.propagate_1d(U, self.dx, self.encap_thick)
@@ -271,6 +287,25 @@ class OpticalPipeline:
         psf7 = self.compute_psf7(**kwargs)
         metrics = self.psf_metrics.compute(psf7)
         return {"psf7": psf7, "metrics": metrics}
+
+    def _pinn_bm_mask(self, d1, w1, d2, w2, z):
+        """
+        PINN soft BM mask at given z plane.
+        sigmoid(slit_dist) → smooth transition at slit edges.
+        """
+        import torch
+        from backend.core.parametric_pinn import compute_slit_dist, compute_bm_mask
+
+        x_t = torch.tensor(self.x_grid, dtype=torch.float32)
+        z_t = torch.full((self.N,), float(z))
+        d1_t = torch.full((self.N,), float(d1))
+        d2_t = torch.full((self.N,), float(d2))
+        w1_t = torch.full((self.N,), float(w1))
+        w2_t = torch.full((self.N,), float(w2))
+
+        sd = compute_slit_dist(x_t, z_t, d1_t, d2_t, w1_t, w2_t)
+        mask = compute_bm_mask(sd, self.pinn_model.mask_sharpness)
+        return mask.numpy()
 
     def compare_cg_thickness(
         self, thicknesses: list[float], **bm_kwargs

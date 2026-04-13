@@ -173,25 +173,23 @@ body {
 .metric-sub { font-size: 11px; color: #999; }
 
 /* Fingerprint simulation */
-.fingerprint-panel { padding: 4px; }
 .fp-row {
-  display: flex; align-items: center; justify-content: center;
-  gap: 16px; margin-bottom: 8px;
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 20px; padding: 8px;
 }
 .fp-box { text-align: center; }
-.fp-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-.fp-image {
-  width: 200px; height: 200px; object-fit: contain;
+.fp-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+.fp-image-box {
+  width: 180px; height: 180px;
   border: 1px solid var(--line); border-radius: 4px;
+  background: #f0f0f0; overflow: hidden;
 }
-.fp-arrow {
-  font-size: 14px; color: var(--primary); font-weight: 700;
-  padding: 4px 10px; background: var(--primary-light); border-radius: 12px;
+.fp-image-box img {
+  width: 100%; height: 100%; object-fit: contain;
 }
-.fp-caveat {
-  background: #f5f5f5; border-left: 3px solid #bbb;
-  padding: 6px 10px; font-size: 10px; color: #888;
-  border-radius: 3px;
+.fp-info {
+  font-size: 10px; color: var(--muted); margin-top: 4px;
+  font-family: 'Consolas', monospace;
 }
 
 /* ---- Explore tab ---- */

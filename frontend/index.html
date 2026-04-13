@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UDFPS Design Studio</title>
-  <link rel="stylesheet" href="src/style.css?v=5" />
+  <link rel="stylesheet" href="src/style.css?v=6" />
 </head>
 <body>
   <header class="topbar">
@@ -79,8 +79,21 @@
 
         <div class="canvas-container">
           <h4>Fingerprint Simulation</h4>
-          <div id="fingerprint-container" class="fingerprint-panel">
-            <p style="color:#999;text-align:center;padding:20px;">Loading...</p>
+          <div class="fp-row">
+            <div class="fp-box">
+              <div class="fp-label">Original</div>
+              <div id="fp-original" class="fp-image-box"></div>
+            </div>
+            <div class="fp-box">
+              <div class="fp-label">Current Design</div>
+              <div id="fp-current" class="fp-image-box"></div>
+              <div id="fp-current-info" class="fp-info"></div>
+            </div>
+            <div class="fp-box" id="fp-best-box" style="display:none">
+              <div class="fp-label">Best (Inverse)</div>
+              <div id="fp-best" class="fp-image-box"></div>
+              <div id="fp-best-info" class="fp-info"></div>
+            </div>
           </div>
         </div>
 
@@ -124,10 +137,10 @@
     </main>
   </div>
 
-  <script src="src/components/drawPsf.js?v=5"></script>
-  <script src="src/components/drawAmplitudeMap.js?v=5"></script>
-  <script src="src/components/drawAmplitudeProfile.js?v=5"></script>
-  <script src="src/components/drawMetricsCard.js?v=5"></script>
-  <script src="src/app.js?v=5"></script>
+  <script src="src/components/drawPsf.js?v=6"></script>
+  <script src="src/components/drawAmplitudeMap.js?v=6"></script>
+  <script src="src/components/drawAmplitudeProfile.js?v=6"></script>
+  <script src="src/components/drawMetricsCard.js?v=6"></script>
+  <script src="src/app.js?v=6"></script>
 </body>
 </html>

@@ -53,11 +53,12 @@
     });
   }
 
-  // ============ Fingerprint simulation (longer debounce) ============
+  // ============ Fingerprint simulation ============
   var fpTimer = null;
   function triggerFingerprint() {
     if (fpTimer) clearTimeout(fpTimer);
     fpTimer = setTimeout(function () {
+      // Current design
       fetchFingerprint().then(function (r) {
         if (r.error) { console.warn('FP error:', r.error); return; }
         state.fingerprint = r;
@@ -67,18 +68,49 @@
   }
 
   function renderFingerprint() {
-    var container = document.getElementById('fingerprint-container');
-    if (!container || !state.fingerprint) return;
     var fp = state.fingerprint;
-    container.innerHTML =
-      '<div class="fp-row">' +
-      '  <div class="fp-box"><div class="fp-label">Original</div>' +
-      '    <img src="data:image/png;base64,' + fp.original_image + '" class="fp-image"/></div>' +
-      '  <div class="fp-arrow">BM</div>' +
-      '  <div class="fp-box"><div class="fp-label">Sensor (MTF ' + (fp.mtf * 100).toFixed(1) + '%)</div>' +
-      '    <img src="data:image/png;base64,' + fp.processed_image + '" class="fp-image"/></div>' +
-      '</div>' +
-      '<div class="fp-caveat">' + fp.approximation + '</div>';
+    if (!fp) return;
+
+    // Original (always same)
+    var origEl = document.getElementById('fp-original');
+    if (origEl && fp.original_image) {
+      origEl.innerHTML = '<img src="data:image/png;base64,' + fp.original_image + '"/>';
+    }
+
+    // Current design
+    var curEl = document.getElementById('fp-current');
+    if (curEl && fp.processed_image) {
+      curEl.innerHTML = '<img src="data:image/png;base64,' + fp.processed_image + '"/>';
+    }
+    var curInfo = document.getElementById('fp-current-info');
+    if (curInfo) {
+      curInfo.textContent = 'MTF ' + (fp.mtf * 100).toFixed(1) + '%';
+    }
+
+    // Best (inverse) — if available
+    var bestBox = document.getElementById('fp-best-box');
+    if (state.inverse && state.inverse.best) {
+      bestBox.style.display = '';
+    }
+  }
+
+  function renderBestFingerprint() {
+    if (!state.inverse || !state.inverse.best) return;
+    var b = state.inverse.best;
+    // Fetch fingerprint for best candidate
+    apiPost('/api/inverse/fingerprint_sim', {
+      d1: b.d1, d2: b.d2, w1: b.w1, w2: b.w2, theta_deg: 0
+    }).then(function (r) {
+      if (r.error) return;
+      var bestEl = document.getElementById('fp-best');
+      if (bestEl) bestEl.innerHTML = '<img src="data:image/png;base64,' + r.processed_image + '"/>';
+      var bestInfo = document.getElementById('fp-best-info');
+      if (bestInfo) {
+        bestInfo.textContent = 'MTF ' + (r.mtf * 100).toFixed(1) + '% | ' +
+          'd1=' + b.d1.toFixed(1) + ' w1=' + b.w1.toFixed(1);
+      }
+      document.getElementById('fp-best-box').style.display = '';
+    });
   }
 
   // ============ Debounced predict ============
@@ -352,8 +384,8 @@
       n_trials: parseInt(document.getElementById('n-trials').value) || 50,
     }).then(function (r) {
       state.inverse = r;
-      // 슬라이더(기준 설계)는 건드리지 않음. Best는 3번째 지문에만 표시.
       renderTab();
+      renderBestFingerprint();
     }).catch(function (e) {
       console.error('Inverse error:', e);
       document.getElementById('explore-status').textContent = 'Error: ' + e.message;

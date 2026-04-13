@@ -272,6 +272,8 @@ def fingerprint_simulation(req: DesignPredictRequest):
         img = np.array(Image.fromarray(img).resize(
             (target_size, target_size), Image.LANCZOS))
     img_norm = img.astype(float) / 255.0
+    # 센서 관점: ridge(잉크=검정=0) → 밝음(1), valley(흰색=255) → 어두움(0)
+    img_sensor = 1.0 - img_norm
 
     # 2. 1D PSF (hybrid 방식 — 설계변수에 반응)
     psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=3)
@@ -289,8 +291,8 @@ def fingerprint_simulation(req: DesignPredictRequest):
         kernel = np.ones_like(kernel)
     kernel /= kernel.sum()
 
-    # 4. 2D separable convolution
-    temp = convolve2d(img_norm, kernel.reshape(1, -1),
+    # 4. 2D separable convolution (센서 입력 기준)
+    temp = convolve2d(img_sensor, kernel.reshape(1, -1),
                       mode='same', boundary='symm')
     output = convolve2d(temp, kernel.reshape(-1, 1),
                         mode='same', boundary='symm')

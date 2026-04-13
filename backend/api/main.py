@@ -22,6 +22,7 @@ from backend.api.routes.design import router as design_router
 from backend.api.routes.candidates import router as candidates_router
 from backend.api.routes.training import router as training_router
 from backend.api.routes.export import router as export_router
+from backend.api.routes.inverse import router as inverse_router
 
 app = FastAPI(
     title="UDFPS BM Design Studio",
@@ -32,7 +33,7 @@ app = FastAPI(
 # CORS - 프론트엔드(Vite dev server) 연결 허용
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +44,7 @@ app.include_router(design_router, prefix="/api/design", tags=["design"])
 app.include_router(candidates_router, prefix="/api/design", tags=["candidates"])
 app.include_router(training_router, prefix="/api/training", tags=["training"])
 app.include_router(export_router, prefix="/api/design", tags=["export"])
+app.include_router(inverse_router, prefix="/api/inverse", tags=["inverse"])
 
 # PSF inference는 /api/inference 경로로 별도 등록
 from backend.api.routes.design import router as _design_router

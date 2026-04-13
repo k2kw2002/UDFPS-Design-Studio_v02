@@ -154,3 +154,29 @@ class PSFMetrics:
             throughput=T,
             crosstalk_ratio=float(xtalk_ratio),
         )
+
+
+# ============================================================
+# Standalone helper functions (API 용)
+# ============================================================
+
+def compute_psf_skewness(psf_7):
+    """PSF 비대칭성. 대칭이면 0, 비대칭이면 큼."""
+    psf = np.array(psf_7)
+    center = 3
+    left = psf[:center].sum()
+    right = psf[center + 1:].sum()
+    total = psf.sum() + 1e-8
+    return float(abs(left - right) / total)
+
+
+def compute_psf_mtf(psf_7):
+    """간이 MTF: Peak / (Peak + Secondary)."""
+    psf = np.array(psf_7)
+    sorted_psf = np.sort(psf)[::-1]
+    return float(sorted_psf[0] / (sorted_psf[0] + sorted_psf[1] + 1e-8))
+
+
+def compute_throughput(psf_7):
+    """전체 에너지 (정규화 전)."""
+    return float(np.sum(psf_7))

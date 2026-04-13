@@ -275,7 +275,7 @@ def fingerprint_simulation(req: DesignPredictRequest):
     img_sensor = 1.0 - img_norm
 
     # 2. PSF + MTF 계산
-    psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=3)
+    psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=7)
     psf_1d = np.array(psf_1d)
     mtf = float(compute_psf_mtf(psf_1d.tolist()))
     skew = float(compute_psf_skewness(psf_1d.tolist()))

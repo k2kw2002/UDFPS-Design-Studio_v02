@@ -22,13 +22,13 @@ router = APIRouter()
 # Global model cache
 # ============================================================
 _model_cache = None
+_pipeline_cache = None
 
 
 def get_9d_model():
     global _model_cache
     if _model_cache is None:
         root = Path(__file__).parent.parent.parent.parent
-        # Phase B stage2 checkpoint (9D)
         ckpt_path = root / "phase_b_stage2.pt"
         if not ckpt_path.exists():
             ckpt_path = root / "parametric_pinn_ckpt.pt"
@@ -43,6 +43,19 @@ def get_9d_model():
         model.eval()
         _model_cache = model
     return _model_cache
+
+
+def get_hybrid_pipeline():
+    """Hybrid pipeline: ASM 전파 + PINN soft BM mask."""
+    global _pipeline_cache
+    if _pipeline_cache is None:
+        from backend.physics.optical_pipeline import OpticalPipeline
+        model = get_9d_model()
+        _pipeline_cache = OpticalPipeline(
+            dx=0.5, n_angles=7,
+            use_pinn=True, pinn_model=model
+        )
+    return _pipeline_cache
 
 
 # ============================================================
@@ -104,9 +117,11 @@ def predict_design(req: DesignPredictRequest):
     from backend.core.parametric_pinn import compute_slit_dist
 
     model = get_9d_model()
+    pipeline = get_hybrid_pipeline()
 
-    # PSF 7-OPD
-    psf = model.predict_psf7(req.d1, req.d2, req.w1, req.w2)
+    # PSF 7-OPD (hybrid pipeline: ASM + PINN soft mask)
+    psf = pipeline.compute_psf7(
+        delta_bm1=req.d1, delta_bm2=req.d2, w1=req.w1, w2=req.w2)
     psf_list = psf.tolist()
 
     # z=40 amplitude profile
@@ -211,7 +226,7 @@ def _find_pareto(candidates, top_k=10):
 @router.post("/search", response_model=InverseResponse)
 def inverse_search(req: InverseRequest):
     """랜덤 search로 설계 공간 탐색 (mock BoTorch)."""
-    model = get_9d_model()
+    pipeline = get_hybrid_pipeline()
 
     candidates = []
     for _ in range(req.n_trials):
@@ -220,7 +235,7 @@ def inverse_search(req: InverseRequest):
         w1 = float(np.random.uniform(5, 20))
         w2 = float(np.random.uniform(5, 20))
 
-        psf = model.predict_psf7(d1, d2, w1, w2)
+        psf = pipeline.compute_psf7(delta_bm1=d1, delta_bm2=d2, w1=w1, w2=w2)
         psf_list = psf.tolist()
 
         skew = compute_psf_skewness(psf_list)
@@ -255,7 +270,7 @@ def fingerprint_simulation(req: DesignPredictRequest):
     from io import BytesIO
     import base64
 
-    model = get_9d_model()
+    pipeline = get_hybrid_pipeline()
     root = Path(__file__).parent.parent.parent.parent
 
     # 1. 지문 이미지 로드
@@ -275,7 +290,8 @@ def fingerprint_simulation(req: DesignPredictRequest):
     img_sensor = 1.0 - img_norm
 
     # 2. PSF + MTF 계산
-    psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=7)
+    psf_1d = pipeline.compute_psf7(
+        delta_bm1=req.d1, delta_bm2=req.d2, w1=req.w1, w2=req.w2)
     psf_1d = np.array(psf_1d)
     mtf = float(compute_psf_mtf(psf_1d.tolist()))
     skew = float(compute_psf_skewness(psf_1d.tolist()))

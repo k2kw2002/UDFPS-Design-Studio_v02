@@ -130,8 +130,8 @@ AI_PINN_PROJECT_v02/
 │   └── test_physics_verification.py
 │
 ├── Dockerfile                  # Docker 빌드
-├── docker-compose.yml          # Docker 오케스트레이션
-└── requirements.txt            # Python 의존성
+└── docker-compose.yml          # Docker 오케스트레이션
+    (requirements.txt는 backend/ 안에 위치)
 ```
 
 ---

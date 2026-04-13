@@ -95,9 +95,27 @@
         crosstalk_ratio: 0.1,
       };
       drawFingerprint('fp-current', state.psf_7, metrics, {
-        sensorView: true, showGrid: true, showInfo: true,
+        showGrid: true, showInfo: true,
         label: 'Current', labelColor: '#90caf9'
       });
+
+      // Best inverse result
+      var bestContainer = document.getElementById('fp-best-container');
+      if (state.inverse && state.inverse.best) {
+        bestContainer.style.display = '';
+        var b = state.inverse.best;
+        var bestMetrics = {
+          mtf_ridge: b.mtf,
+          skewness: b.skewness,
+          crosstalk_ratio: 0.1,
+        };
+        drawFingerprint('fp-best', b.psf_7, bestMetrics, {
+          showGrid: true, showInfo: true,
+          label: 'Best', labelColor: '#a5d6a7'
+        });
+      } else {
+        bestContainer.style.display = 'none';
+      }
     }
 
     var psfCanvas = document.getElementById('psf-canvas');

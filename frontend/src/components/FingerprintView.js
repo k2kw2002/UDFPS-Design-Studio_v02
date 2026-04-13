@@ -227,17 +227,12 @@ function _renderFingerprint(canvas, fpImg, psf7, metrics, options) {
   for (let i = 0; i < W * H; i++) {
     const v = rendered[i];
 
-    if (options.sensorView === false) {
-      // 잉크 지문 (흑백, ridge 검정)
-      const lum = Math.floor((1.0 - v) * 255);
+    // Grayscale (ridge=밝음, valley=어두움)
+    {
+      const lum = Math.floor(v * 255);
       px[i * 4] = lum;
       px[i * 4 + 1] = lum;
       px[i * 4 + 2] = lum;
-    } else {
-      // OPD 센서 뷰 (520nm 녹색 톤)
-      px[i * 4]     = Math.floor(v * 45 + 8);     // R
-      px[i * 4 + 1] = Math.floor(v * 190 + 20);   // G
-      px[i * 4 + 2] = Math.floor(v * 35 + 8);     // B
     }
     px[i * 4 + 3] = 255;
   }

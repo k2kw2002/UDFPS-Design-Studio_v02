@@ -82,8 +82,11 @@ class PSFMetrics:
         #          MTF=1: 검정/흰색 뚜렷 → 지문 완벽 인식
         #          MTF=0: 전체 회색 → 지문 인식 불가
         # -----------------------------------------------
-        ridge_vals = psf_7[[0, 2, 4, 6]]   # Ridge 위치 값들
-        valley_vals = psf_7[[1, 3, 5]]     # Valley 위치 값들
+        # 지문 period=288um (4피치): R,R,V,V,R,R,V
+        # OPD0(36um)=R, OPD1(108um)=R, OPD2(180um)=V,
+        # OPD3(252um)=V, OPD4(324um)=R, OPD5(396um)=R, OPD6(468um)=V
+        ridge_vals = psf_7[[0, 1, 4, 5]]   # Ridge 위치 값들
+        valley_vals = psf_7[[2, 3, 6]]     # Valley 위치 값들
 
         r_mean = ridge_vals.mean()   # Ridge 평균
         v_mean = valley_vals.mean()  # Valley 평균

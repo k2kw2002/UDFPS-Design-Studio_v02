@@ -15,6 +15,7 @@
     amp_z40: null, int_z0: null, x_coords: null,
     amp_map: null,
     inverse: null,
+    fingerprint: null,
     activeTab: 'summary',
   };
 
@@ -43,6 +44,41 @@
 
   function fetchInverse(params) {
     return apiPost('/api/inverse/search', params);
+  }
+
+  function fetchFingerprint() {
+    return apiPost('/api/inverse/fingerprint_sim', {
+      d1: state.d1, d2: state.d2, w1: state.w1, w2: state.w2,
+      theta_deg: state.theta_deg,
+    });
+  }
+
+  // ============ Fingerprint simulation (longer debounce) ============
+  var fpTimer = null;
+  function triggerFingerprint() {
+    if (fpTimer) clearTimeout(fpTimer);
+    fpTimer = setTimeout(function () {
+      fetchFingerprint().then(function (r) {
+        if (r.error) { console.warn('FP error:', r.error); return; }
+        state.fingerprint = r;
+        if (state.activeTab === 'summary') renderFingerprint();
+      }).catch(function (e) { console.error('FP error:', e); });
+    }, 600);
+  }
+
+  function renderFingerprint() {
+    var container = document.getElementById('fingerprint-container');
+    if (!container || !state.fingerprint) return;
+    var fp = state.fingerprint;
+    container.innerHTML =
+      '<div class="fp-row">' +
+      '  <div class="fp-box"><div class="fp-label">Original</div>' +
+      '    <img src="data:image/png;base64,' + fp.original_image + '" class="fp-image"/></div>' +
+      '  <div class="fp-arrow">BM</div>' +
+      '  <div class="fp-box"><div class="fp-label">Sensor (MTF ' + (fp.mtf * 100).toFixed(1) + '%)</div>' +
+      '    <img src="data:image/png;base64,' + fp.processed_image + '" class="fp-image"/></div>' +
+      '</div>' +
+      '<div class="fp-caveat">' + fp.approximation + '</div>';
   }
 
   // ============ Debounced predict ============
@@ -84,47 +120,7 @@
       skewness: state.skewness, mtf: state.mtf, throughput: state.throughput,
     });
 
-    // Fingerprint views
-    if (typeof drawFingerprintOriginal === 'function') {
-      drawFingerprintOriginal('fp-original');
-    }
-    if (typeof drawFingerprint === 'function') {
-      var metrics = {
-        mtf_ridge: state.mtf,
-        skewness: state.skewness,
-        crosstalk_ratio: 0.1,
-      };
-      drawFingerprint('fp-current', state.psf_7, metrics, {
-        showGrid: true, showInfo: true,
-        label: 'Current', labelColor: '#90caf9'
-      });
-
-      // Best inverse result
-      var bestContainer = document.getElementById('fp-best-container');
-      if (state.inverse && state.inverse.best) {
-        bestContainer.style.display = '';
-        var b = state.inverse.best;
-        var bestMetrics = {
-          mtf_ridge: b.mtf,
-          skewness: b.skewness,
-          crosstalk_ratio: 0.1,
-        };
-        drawFingerprint('fp-best', b.psf_7, bestMetrics, {
-          showGrid: true, showInfo: true,
-          label: 'Best', labelColor: '#a5d6a7'
-        });
-        // Best 파라미터 표시
-        var infoEl = document.getElementById('best-info');
-        if (infoEl) {
-          infoEl.innerHTML =
-            'd1=' + b.d1.toFixed(1) + ' d2=' + b.d2.toFixed(1) +
-            ' w1=' + b.w1.toFixed(1) + ' w2=' + b.w2.toFixed(1) +
-            '<br>MTF=' + (b.mtf * 100).toFixed(1) + '% Skew=' + b.skewness.toFixed(3);
-        }
-      } else {
-        bestContainer.style.display = 'none';
-      }
-    }
+    renderFingerprint();
 
     var psfCanvas = document.getElementById('psf-canvas');
     drawPsfBar(psfCanvas, state.psf_7);
@@ -338,6 +334,7 @@
         document.getElementById('value-' + key).textContent = state[key].toFixed(1);
         state.amp_map = null;
         triggerPredict();
+        triggerFingerprint();
       });
     });
   }
@@ -375,6 +372,7 @@
     wireSliders();
     document.getElementById('inverse-run-btn').addEventListener('click', runInverse);
     triggerPredict();
+    triggerFingerprint();
   }
 
   document.addEventListener('DOMContentLoaded', init);

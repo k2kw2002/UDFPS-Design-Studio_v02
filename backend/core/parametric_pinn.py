@@ -244,3 +244,58 @@ class ParametricHelmholtzPINN(nn.Module):
 
         total_psf /= len(angles)
         return total_psf
+
+    def predict_psf7_v2(self, d1, d2, w1, w2, device='cpu', n_angles=7):
+        """
+        PSF v2: PINN(z=25, BM2 직후) → ASM(25um 전파) → z=0 OPD.
+
+        기존 predict_psf7(hybrid)과 달리 ASM fingerprint+CG 없이
+        순수 PINN 복소장에서 시작. BM mask 효과가 z=25에 반영돼야 함.
+        """
+        from backend.physics.asm_propagator import ASMPropagator
+
+        angles = [0, 15, -15, 30, -30, 41, -41][:n_angles]
+        pitch = OPD_PITCH
+        n_pitches = N_PITCHES
+        self.eval()
+        asm = ASMPropagator(wl_um=0.520, n_medium=1.52)
+
+        nx = 2048
+        x_range = 504.0
+        dx = x_range / nx
+        x_arr = np.linspace(0, x_range, nx, endpoint=False)
+
+        z_sample = 25.0
+        total_psf = np.zeros(n_pitches)
+
+        with torch.no_grad():
+            for theta in angles:
+                th_rad = math.radians(theta)
+                sin_th_val = math.sin(th_rad)
+                cos_th_val = math.cos(th_rad)
+
+                x_t = torch.tensor(x_arr, dtype=torch.float32)
+                z_t = torch.full((nx,), z_sample)
+                d1_t = torch.full((nx,), float(d1))
+                d2_t = torch.full((nx,), float(d2))
+                w1_t = torch.full((nx,), float(w1))
+                w2_t = torch.full((nx,), float(w2))
+                sin_t = torch.full((nx,), sin_th_val)
+                cos_t = torch.full((nx,), cos_th_val)
+                sd = compute_slit_dist(x_t, z_t, d1_t, d2_t, w1_t, w2_t)
+
+                coords = torch.stack([x_t, z_t, d1_t, d2_t, w1_t, w2_t,
+                                      sin_t, cos_t, sd], dim=1)
+                u = self.forward(coords)
+                u_complex = u[:, 0].numpy() + 1j * u[:, 1].numpy()
+
+                u_z0 = asm.propagate_1d(u_complex, dx=dx, dz=z_sample)
+                intensity = np.abs(u_z0) ** 2
+
+                for i in range(n_pitches):
+                    center = i * pitch + pitch / 2
+                    mask = np.abs(x_arr - center) < 5.0
+                    total_psf[i] += intensity[mask].sum() * dx
+
+        total_psf /= len(angles)
+        return total_psf

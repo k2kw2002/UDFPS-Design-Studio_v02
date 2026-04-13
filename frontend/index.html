@@ -77,19 +77,10 @@
       <section class="tab-panel" data-tab="summary" style="display:block">
         <div id="metrics-container"></div>
 
-        <div class="fingerprint-row">
-          <div class="canvas-container fp-tile">
-            <h4>Original</h4>
-            <canvas id="fp-original" width="180" height="220"></canvas>
-          </div>
-          <div class="canvas-container fp-tile">
-            <h4>Current Design</h4>
-            <canvas id="fp-current" width="180" height="220"></canvas>
-          </div>
-          <div class="canvas-container fp-tile" id="fp-best-container" style="display:none">
-            <h4>Best (Inverse)</h4>
-            <canvas id="fp-best" width="180" height="220"></canvas>
-            <div id="best-info" style="font-size:11px;color:#555;margin-top:4px;"></div>
+        <div class="canvas-container">
+          <h4>Fingerprint Simulation</h4>
+          <div id="fingerprint-container" class="fingerprint-panel">
+            <p style="color:#999;text-align:center;padding:20px;">Loading...</p>
           </div>
         </div>
 
@@ -134,7 +125,6 @@
   </div>
 
   <script src="src/components/drawPsf.js?v=4"></script>
-  <script src="src/components/FingerprintView.js?v=4"></script>
   <script src="src/components/drawAmplitudeMap.js?v=4"></script>
   <script src="src/components/drawAmplitudeProfile.js?v=4"></script>
   <script src="src/components/drawMetricsCard.js?v=4"></script>

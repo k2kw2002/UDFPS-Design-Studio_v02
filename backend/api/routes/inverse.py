@@ -239,3 +239,75 @@ def inverse_search(req: InverseRequest):
     pareto = _find_pareto(candidates)
 
     return InverseResponse(best=best, pareto=pareto, all_trials=candidates)
+
+
+# ============================================================
+# Fingerprint simulation (2D separable)
+# ============================================================
+@router.post("/fingerprint_sim")
+def fingerprint_simulation(req: DesignPredictRequest):
+    """
+    지문 -> BM 구조 통과 -> 센서 출력 (2D separable 근사).
+    정사각 격자(72um), 사각형 aperture 가정.
+    """
+    from PIL import Image
+    from scipy.signal import convolve2d
+    from scipy.interpolate import interp1d
+    from io import BytesIO
+    import base64
+
+    model = get_9d_model()
+    root = Path(__file__).parent.parent.parent.parent
+
+    # 1. 지문 이미지 로드
+    fp_path = root / "frontend" / "src" / "assets" / "fingerprint_sample.png"
+    if not fp_path.exists():
+        fp_path = root / "fingerprint_sample.png"
+    if not fp_path.exists():
+        return {"error": "fingerprint_sample.png not found"}
+
+    img = np.array(Image.open(fp_path).convert("L"))
+    target_size = 256
+    if max(img.shape) > target_size:
+        img = np.array(Image.fromarray(img).resize(
+            (target_size, target_size), Image.LANCZOS))
+    img_norm = img.astype(float) / 255.0
+
+    # 2. 1D PSF (hybrid 방식 — 설계변수에 반응)
+    psf_1d = model.predict_psf7(req.d1, req.d2, req.w1, req.w2, n_angles=3)
+    psf_1d = np.array(psf_1d)
+
+    # 3. PSF를 smooth kernel로 확장 (7 -> 21 tap)
+    x_sparse = np.arange(7).astype(float)
+    x_dense = np.linspace(0, 6, 21)
+    try:
+        kernel = interp1d(x_sparse, psf_1d, kind='cubic')(x_dense)
+    except Exception:
+        kernel = interp1d(x_sparse, psf_1d, kind='linear')(x_dense)
+    kernel = np.maximum(kernel, 0)
+    if kernel.sum() < 1e-6:
+        kernel = np.ones_like(kernel)
+    kernel /= kernel.sum()
+
+    # 4. 2D separable convolution
+    temp = convolve2d(img_norm, kernel.reshape(1, -1),
+                      mode='same', boundary='symm')
+    output = convolve2d(temp, kernel.reshape(-1, 1),
+                        mode='same', boundary='symm')
+
+    output_vis = (output - output.min()) / (output.max() - output.min() + 1e-8)
+    output_vis = (output_vis * 255).astype(np.uint8)
+
+    # 5. base64 인코딩
+    def to_b64(arr):
+        buf = BytesIO()
+        Image.fromarray(arr).save(buf, format='PNG')
+        return base64.b64encode(buf.getvalue()).decode('ascii')
+
+    return {
+        "original_image": to_b64(img),
+        "processed_image": to_b64(output_vis),
+        "psf_1d": psf_1d.tolist(),
+        "mtf": float(compute_psf_mtf(psf_1d.tolist())),
+        "approximation": "2D Separable (72um pitch, square aperture)",
+    }

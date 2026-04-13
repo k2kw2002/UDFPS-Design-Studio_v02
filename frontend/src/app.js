@@ -286,6 +286,77 @@
     ctx.restore();
   }
 
+  // ============ Top 5 with fingerprint + stack ============
+  function renderTop5() {
+    if (!state.inverse || !state.inverse.pareto) return;
+    var section = document.getElementById('top5-section');
+    var container = document.getElementById('top5-container');
+    if (!section || !container) return;
+
+    var top5 = state.inverse.pareto.slice(0, 5);
+    if (top5.length === 0) return;
+
+    section.style.display = '';
+    container.innerHTML = '';
+
+    top5.forEach(function (c, i) {
+      var card = document.createElement('div');
+      card.className = 'top5-card' + (i === 0 ? ' best' : '');
+      card.innerHTML =
+        '<div class="top5-rank">#' + (i + 1) + '</div>' +
+        '<div class="top5-fp" id="top5-fp-' + i + '"></div>' +
+        '<div class="top5-metrics">' +
+          'MTF <span class="val">' + (c.mtf * 100).toFixed(1) + '%</span><br>' +
+          'Skew <span class="val">' + c.skewness.toFixed(3) + '</span><br>' +
+          'Thru <span class="val">' + c.throughput.toFixed(1) + '</span>' +
+        '</div>' +
+        '<div class="top5-stack">' + renderStackMini(c) + '</div>';
+
+      card.addEventListener('click', function () {
+        state.d1 = c.d1; state.d2 = c.d2;
+        state.w1 = c.w1; state.w2 = c.w2;
+        updateSliderDisplays();
+        triggerPredict();
+        triggerFingerprint();
+      });
+
+      container.appendChild(card);
+
+      // Fetch fingerprint for each candidate
+      apiPost('/api/inverse/fingerprint_sim', {
+        d1: c.d1, d2: c.d2, w1: c.w1, w2: c.w2, theta_deg: 0
+      }).then(function (r) {
+        if (r.error) return;
+        var el = document.getElementById('top5-fp-' + i);
+        if (el) el.innerHTML = '<img src="data:image/png;base64,' + r.processed_image + '"/>';
+      });
+    });
+  }
+
+  function renderStackMini(c) {
+    var maxW = 20;
+    function bar(w, color) {
+      var pct = Math.max(10, (w / maxW) * 100);
+      return '<div class="stack-bar" style="width:' + pct + '%;background:' + color + '"></div>';
+    }
+    return '' +
+      '<div class="stack-layer">' +
+        '<span class="stack-label">BM1</span>' +
+        bar(c.w1, '#2563eb') +
+        '<span class="stack-val">w=' + c.w1.toFixed(1) + ' d=' + c.d1.toFixed(1) + '</span>' +
+      '</div>' +
+      '<div class="stack-layer">' +
+        '<span class="stack-label">ILD</span>' +
+        '<div class="stack-bar" style="width:100%;background:#e2e8f0;height:3px"></div>' +
+        '<span class="stack-val">20um</span>' +
+      '</div>' +
+      '<div class="stack-layer">' +
+        '<span class="stack-label">BM2</span>' +
+        bar(c.w2, '#7c3aed') +
+        '<span class="stack-val">w=' + c.w2.toFixed(1) + ' d=' + c.d2.toFixed(1) + '</span>' +
+      '</div>';
+  }
+
   // ============ Candidate card ============
   function createCandidateCard(c, rank) {
     var div = document.createElement('div');
@@ -378,6 +449,7 @@
       state.inverse = r;
       renderTab();
       renderBestFingerprint();
+      renderTop5();
     }).catch(function (e) {
       console.error('Inverse error:', e);
       document.getElementById('explore-status').textContent = 'Error: ' + e.message;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UDFPS Design Studio</title>
-  <link rel="stylesheet" href="src/style.css?v=7" />
+  <link rel="stylesheet" href="src/style.css?v=8" />
 </head>
 <body>
   <header class="topbar">
@@ -90,6 +90,11 @@
           <h4>PSF (7-OPD)</h4>
           <canvas id="psf-canvas" width="720" height="180"></canvas>
         </div>
+
+        <div class="card" id="top5-section" style="display:none">
+          <h4>Top 5 Candidates (Inverse Design)</h4>
+          <div id="top5-container" class="top5-grid"></div>
+        </div>
       </section>
 
       <!-- ===== Detail ===== -->
@@ -122,9 +127,9 @@
     </main>
   </div>
 
-  <script src="src/components/drawAmplitudeMap.js?v=7"></script>
-  <script src="src/components/drawAmplitudeProfile.js?v=7"></script>
-  <script src="src/components/drawMetricsCard.js?v=7"></script>
-  <script src="src/app.js?v=7"></script>
+  <script src="src/components/drawAmplitudeMap.js?v=8"></script>
+  <script src="src/components/drawAmplitudeProfile.js?v=8"></script>
+  <script src="src/components/drawMetricsCard.js?v=8"></script>
+  <script src="src/app.js?v=8"></script>
 </body>
 </html>

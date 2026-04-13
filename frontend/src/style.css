@@ -172,6 +172,13 @@ body {
 .metric-value.bad { color: var(--bad); }
 .metric-sub { font-size: 11px; color: #999; }
 
+/* Fingerprint row */
+.fingerprint-row {
+  display: flex; gap: 12px; margin-bottom: 12px;
+}
+.fp-tile { flex: 0 0 auto; text-align: center; }
+.fp-tile canvas { border-radius: 4px; }
+
 /* ---- Explore tab ---- */
 .explore-status {
   padding: 24px;

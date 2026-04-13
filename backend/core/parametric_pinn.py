@@ -165,31 +165,82 @@ class ParametricHelmholtzPINN(nn.Module):
         return A[:, 0] ** 2 + A[:, 1] ** 2
 
     def predict_psf7(self, d1, d2, w1, w2, device='cpu', n_angles=7):
-        """설계변수 → 7-OPD PSF (다각도 비간섭 합)."""
+        """
+        설계변수 → 7-OPD PSF (다각도 비간섭 합).
+
+        하이브리드 파이프라인:
+          ASM(지문+AR+CG 550um) → PINN BM1 soft mask → ASM(ILD 20um)
+          → BM2 binary mask → ASM(Encap 20um) → OPD 적분
+
+        PINN 기여: BM1에서 slit/BM 분화 (soft mask, 회절 효과 포함).
+        ASM 기여: 지문 패턴, CG blur, 자유공간 전파.
+        """
+        from backend.physics.asm_propagator import ASMPropagator
+        from backend.physics.ar_coating.ar_boundary import ARLutInterpolator
+
         angles = [0, 15, -15, 30, -30, 41, -41][:n_angles]
         pitch = OPD_PITCH
         n_pitches = N_PITCHES
         self.eval()
+        asm = ASMPropagator(wl_um=0.520, n_medium=1.52)
+        ar_lut = ARLutInterpolator()
+
+        # x 그리드 (dx=1um, 504 points — ASM과 동일)
+        N_pts = 504
+        dx = 1.0
+        x_arr = np.arange(N_pts) * dx
+
+        # 지문 패턴 (ridge=1.0, valley=0.1, period=288um)
+        finger = np.ones(N_pts) * 0.1
+        for i in range(N_pts):
+            if (x_arr[i] % 288) < 144:
+                finger[i] = 1.0
+
+        # BM1 soft mask from PINN (slit indicator at z=40)
+        x_t = torch.tensor(x_arr, dtype=torch.float32)
+        z40_t = torch.full((N_pts,), Z_BM1)
+        d1_t = torch.full((N_pts,), float(d1))
+        d2_t = torch.full((N_pts,), float(d2))
+        w1_t = torch.full((N_pts,), float(w1))
+        w2_t = torch.full((N_pts,), float(w2))
+        sd40 = compute_slit_dist(x_t, z40_t, d1_t, d2_t, w1_t, w2_t)
+        bm1_mask = compute_bm_mask(sd40, self.mask_sharpness).numpy()
+
+        # BM2 binary mask
+        bm2_mask = np.zeros(N_pts)
+        for p in range(n_pitches):
+            center = p * pitch + pitch / 2 + d2
+            i_left = max(0, int(center - w2 / 2))
+            i_right = min(N_pts, int(center + w2 / 2))
+            bm2_mask[i_left:i_right] = 1.0
+
         total_psf = np.zeros(n_pitches)
 
-        with torch.no_grad():
-            for theta in angles:
-                th_rad = math.radians(theta)
-                sin_th = math.sin(th_rad)
-                cos_th = math.cos(th_rad)
-                for i in range(n_pitches):
-                    x_opd = i * pitch + pitch / 2
-                    # 9D: add slit_dist
-                    sd = compute_slit_dist(
-                        torch.tensor([x_opd]), torch.tensor([0.0]),
-                        torch.tensor([d1]), torch.tensor([d2]),
-                        torch.tensor([w1]), torch.tensor([w2])
-                    ).item()
-                    inp = torch.tensor(
-                        [[x_opd, 0.0, d1, d2, w1, w2, sin_th, cos_th, sd]],
-                        dtype=torch.float32, device=torch.device(device)
-                    )
-                    I = self.predict_intensity(inp)
-                    total_psf[i] += I.item()
+        for theta in angles:
+            # Step 1: ASM — 지문 → AR → CG 550um → z=40 (BM1 면)
+            t_amp, dphi = ar_lut.get_complex_t(520, theta, unpolarized=True)
+            U0 = asm.make_incident_field(x_arr, theta, dphi) * finger * t_amp
+            U_bm1 = asm.propagate_1d(U0, dx, 550.0)
+
+            # Step 2: PINN BM1 soft mask (slit=~1, BM=~0)
+            U_after_bm1 = U_bm1 * bm1_mask
+
+            # Step 3: ASM z=40 → z=20 (ILD 20um)
+            U_at_bm2 = asm.propagate_1d(U_after_bm1, dx, 20.0)
+
+            # Step 4: BM2 binary mask
+            U_after_bm2 = U_at_bm2 * bm2_mask
+
+            # Step 5: ASM z=20 → z=0 (Encap 20um)
+            U_z0 = asm.propagate_1d(U_after_bm2, dx, 20.0)
+            intensity = np.abs(U_z0) ** 2
+
+            # Step 6: OPD 픽셀 적분 (10um 폭)
+            for i in range(n_pitches):
+                opd_center = i * pitch + pitch / 2
+                i_left = max(0, int(opd_center - 5))
+                i_right = min(N_pts, int(opd_center + 5))
+                total_psf[i] += intensity[i_left:i_right].sum() * dx
+
         total_psf /= len(angles)
         return total_psf

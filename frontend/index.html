@@ -76,6 +76,18 @@
       <!-- Summary Tab -->
       <section class="tab-panel" data-tab="summary" style="display:block">
         <div id="metrics-container"></div>
+
+        <div class="fingerprint-row">
+          <div class="canvas-container fp-tile">
+            <h4>Original</h4>
+            <canvas id="fp-original" width="180" height="220"></canvas>
+          </div>
+          <div class="canvas-container fp-tile">
+            <h4>Current Design</h4>
+            <canvas id="fp-current" width="180" height="220"></canvas>
+          </div>
+        </div>
+
         <div class="canvas-container">
           <h4>PSF (7-OPD)</h4>
           <canvas id="psf-canvas" width="760" height="200"></canvas>
@@ -117,6 +129,7 @@
   </div>
 
   <script src="src/components/drawPsf.js?v=4"></script>
+  <script src="src/components/FingerprintView.js?v=4"></script>
   <script src="src/components/drawAmplitudeMap.js?v=4"></script>
   <script src="src/components/drawAmplitudeProfile.js?v=4"></script>
   <script src="src/components/drawMetricsCard.js?v=4"></script>

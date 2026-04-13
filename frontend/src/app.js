@@ -84,6 +84,22 @@
       skewness: state.skewness, mtf: state.mtf, throughput: state.throughput,
     });
 
+    // Fingerprint views
+    if (typeof drawFingerprintOriginal === 'function') {
+      drawFingerprintOriginal('fp-original');
+    }
+    if (typeof drawFingerprint === 'function') {
+      var metrics = {
+        mtf_ridge: state.mtf,
+        skewness: state.skewness,
+        crosstalk_ratio: 0.1,
+      };
+      drawFingerprint('fp-current', state.psf_7, metrics, {
+        sensorView: true, showGrid: true, showInfo: true,
+        label: 'Current', labelColor: '#90caf9'
+      });
+    }
+
     var psfCanvas = document.getElementById('psf-canvas');
     drawPsfBar(psfCanvas, state.psf_7);
 
